@@ -6,10 +6,31 @@ from g4f.cookies import set_cookies
 g4f.debug.logging = True
 g4f.debug.version_check = False
 
-cookie = "COLOQUE O COOKIE DO BING AQUI"
+cookie = "1t_Prgr4tykW9uF0E-ETgBLYaCKUmKNK_slBeSB7jIOJE1oYoyrTBjn0Hp_baxwbbO1vPd13GwSDZzotteOMi7-iKKLxcW5c8JObLYMP02sfdGdfb0boWWzCSvZ9jyKAt7DG4XAf2Iym3VmJ_lhQlo0Upx0GNGgeUBUxQ2IRxVBzK_jcLhdS2VMBT9ERj2mdt_KGqNNvLroY8V44zr0ctDQ"
 set_cookies(".bing.com", {
   "_U": cookie
 })
+
+MODELO_PROMPT = """
+{
+  "prompt":"...",
+  "publico_alvo":"..."
+}
+"""
+
+PROMPT_CRIACAO = f"""
+Você é um especialista em Criação de Prompt.
+Você irá gerar as seguintes seções:
+"
+'Prompt': 'Forneça o melhor prompt possível de acordo com minha solicitação da forma mais específica, completa e direta'
+'Público Alvo: 'Traga o público alvo para o meu nicho'
+"
+Um exemplo de prompt: "Você será um criador de conteúdo e criará um post sobre ... com bastante propriedade ..."
+Pense cuidadosamente e use sua imaginação para criar um prompt incrível.
+Quando eu falar "crie um prompt sobre ..." gere um prompt como sugerido acima sobre o nicho que irei solicitar.
+A sua resposta deve ser retornado no formato json seguindo exatamente como o modelo:
+{MODELO_PROMPT}
+"""
 
 def gerarImagem(prompt:str="", caminho:str=""):
   nome = "bg" + str(random.randrange(0, 100000))
@@ -35,3 +56,57 @@ def gerarImagem(prompt:str="", caminho:str=""):
       print(f'Imagem {nome}_{i}.png salva com sucesso!')
     else:
       print(f'Não foi possível baixar a imagem {nome}\nURL: {result}')
+
+def criarPrompt(nicho:str=""):
+  prompt = "Não repita os mesmos abaixo:\n"
+  with open(f'./conteudo.txt', "r", encoding="UTF-8") as f:
+    text = f.read()
+    prompt += text
+  response = g4f.ChatCompletion.create(
+    model=g4f.models.default,
+    messages=[
+      {"role": "system", "content": PROMPT_CRIACAO},
+      {"role": "assistant", "content": "Entendi!"},
+      {"role": "system", "content": prompt},
+      {"role": "assistant", "content":"Entendi!"},
+      {"role": "user", "content":f"crie um prompt sobre {nicho}"}
+    ]
+  )
+  return response
+
+MODELO ="""
+{
+  "titulo":"...",
+  "conteudo": "...",
+  "descricao":"...",
+  "hashtag":"..."
+}
+"""
+
+PROMPT_FINAL = f"""
+Quando eu falar "Crie um Post" vc irá criar um Post com bastante engajamento.
+O Post deve trazer informações importate que ajudará o público alvo sobre o assunto,
+traga pontos importancias que dará informação ao público alvo.
+No conteudo, adicione "Leia a descrição".
+Na descrição entrege as informações necessárias para sanar as dúvidas sendo objetivo e claro.
+Obs: O titulo de ter no máximo 50 caracteres, o conteudo deve conter no máximo 330 caracteres ao total, descricao deve conter no máximo 2000 caracteres ao total , no hashtag conter no mínimo 5 # para engajamento.
+Não misture os conteúdos, título é em titulo, conteúdo é em conteudo, descrição é em descricao e hashtags é em hashtag.
+
+A sua resposta deve ser retornado exatamente no formato json seguindo exatamente como o modelo:
+{MODELO}
+
+O resultado deve ser em português.
+Sua primeira resposta deve ser apenas que entendeu.
+"""
+
+def gerarPost(prompt:str="") -> str:
+  response = g4f.ChatCompletion.create(
+    model=g4f.models.default,
+    messages=[
+      {"role": "system", "content": prompt},
+      {"role": "user", "content": PROMPT_FINAL},
+      {"role": "assistant", "content": "Entendi!"},
+      {"role": "user", "content": "Crie um post"}
+    ]
+  )
+  return response
