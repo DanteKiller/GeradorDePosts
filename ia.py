@@ -6,7 +6,7 @@ from g4f.cookies import set_cookies
 g4f.debug.logging = True
 g4f.debug.version_check = False
 
-cookie = "1t_Prgr4tykW9uF0E-ETgBLYaCKUmKNK_slBeSB7jIOJE1oYoyrTBjn0Hp_baxwbbO1vPd13GwSDZzotteOMi7-iKKLxcW5c8JObLYMP02sfdGdfb0boWWzCSvZ9jyKAt7DG4XAf2Iym3VmJ_lhQlo0Upx0GNGgeUBUxQ2IRxVBzK_jcLhdS2VMBT9ERj2mdt_KGqNNvLroY8V44zr0ctDQ"
+cookie = "ADICIONE SEU COOKIE AQUI"
 set_cookies(".bing.com", {
   "_U": cookie
 })
