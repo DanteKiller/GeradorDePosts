@@ -1,6 +1,7 @@
-import json, random, glob, os, unicodedata, re, shutil
+import json, random, glob, os, unicodedata, re, shutil, instagram
 from time import sleep
 import ia
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 TITLEQTDE = 30
 TEXTQTDE = 32
@@ -81,10 +82,43 @@ def editarTexto(text:str="", tqtde:int=0) -> str:
         temp = ""
         ponto = False
       else:
+        temp += c + " "
+    else:
+      conteudo += temp[:-1] + "\n"
+      if ponto:
+        conteudo += c + "\n"
+        temp = ""
+        ponto = False
+      else:
         temp = c + " "
   if not temp == "":
     conteudo += temp[:-1]
   return conteudo
+
+def geraImagemComTexto(img:str="", titulo:str="", conteudo:str="", hashtag:str="", nome:str=""):
+  imagem = None
+  draw = None
+  print("Adicionando o texto na imagem")
+  bg = Image.open(img).convert('RGB')
+  x = bg.width//2
+  y = bg.height//2
+  imagem = Image.new('RGBA', bg.size)
+  draw = ImageDraw.Draw(imagem)
+  fonte = ImageFont.truetype(caminho_font, 50.1)
+  fonte1 = ImageFont.truetype(caminho_font, 50)
+
+  draw.multiline_text(xy=(x,y), text=titulo+"\n"+conteudo, font=fonte, fill="#1A3442", anchor="mm", align="center")
+
+  imagem = imagem.filter(ImageFilter.BoxBlur(7))
+  bg.paste(imagem, imagem)
+
+  draw = ImageDraw.Draw(bg)
+  draw.text(xy=(x,y), text=titulo+"\n"+conteudo, fill="#ffffff", font=fonte1, anchor="mm", align="center")
+
+  print("Salvando a imagem final")
+  bg.save(f'{caminho_pronto}/{nome}.png')
+  bg.close()
+  print("Imagem final pronta")
 
 def main(nicho:str=""):
   imgs = [x for x in glob.glob(rf"{caminho_img_gerada}/*.png")]
@@ -96,7 +130,7 @@ def main(nicho:str=""):
   print("Gerando prompt")
   prompt = gerarPrompt(nicho)
   print("Salvando prompt")
-  with open(f'./conteudo.txt', "w", encoding="UTF-8") as f:
+  with open(f'./conteudo.txt', "a", encoding="UTF-8") as f:
     f.write(prompt + "\n")
 
   while True:
@@ -117,4 +151,13 @@ def main(nicho:str=""):
   with open(f'{caminho_texto}/{nome}.txt', "w", encoding="UTF-8") as f:
     f.write(title + "\n" + content + "\n" + description + "\n" + hashtag)
 
-main("Saúde")
+  print("Gerando imagem final")
+  geraImagemComTexto(img, titulo, conteudo, hashtag, nome)
+
+  file_img = os.path.basename(img)
+  shutil.move(img, f'{caminho_img_usada}/{file_img}')
+
+  print('Iniciando postagem')
+  instagram.postarFoto(caminho_pronto, caminho_texto, nome)
+
+main("Aprender automação com python")
