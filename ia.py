@@ -1,4 +1,4 @@
-import random, re, requests
+import random, re, requests, os
 import g4f
 import g4f.Provider
 from g4f.cookies import set_cookies
@@ -6,7 +6,7 @@ from g4f.cookies import set_cookies
 g4f.debug.logging = True
 g4f.debug.version_check = False
 
-cookie = "ADICIONE SEU COOKIE AQUI"
+cookie = "ADICIONE O COOKIE DO BING AQUI"
 set_cookies(".bing.com", {
   "_U": cookie
 })
@@ -63,7 +63,7 @@ def criarPrompt(nicho:str=""):
     text = f.read()
     prompt += text
   response = g4f.ChatCompletion.create(
-    model=g4f.models.default,
+    model=g4f.models.llama_3_1_70b,
     messages=[
       {"role": "system", "content": PROMPT_CRIACAO},
       {"role": "assistant", "content": "Entendi!"},
@@ -92,21 +92,22 @@ Na descrição entrege as informações necessárias para sanar as dúvidas send
 Obs: O titulo de ter no máximo 50 caracteres, o conteudo deve conter no máximo 330 caracteres ao total, descricao deve conter no máximo 2000 caracteres ao total , no hashtag conter no mínimo 5 # para engajamento.
 Não misture os conteúdos, título é em titulo, conteúdo é em conteudo, descrição é em descricao e hashtags é em hashtag.
 
+O resultado deve ser em português.
 A sua resposta deve ser retornado exatamente no formato json seguindo exatamente como o modelo:
 {MODELO}
-
-O resultado deve ser em português.
-Sua primeira resposta deve ser apenas que entendeu.
 """
+
+# Sua primeira resposta deve ser apenas que entendeu.
 
 def gerarPost(prompt:str="") -> str:
   response = g4f.ChatCompletion.create(
     model=g4f.models.default,
     messages=[
-      {"role": "system", "content": prompt},
-      {"role": "user", "content": PROMPT_FINAL},
-      {"role": "assistant", "content": "Entendi!"},
-      {"role": "user", "content": "Crie um post"}
+      # {"role": "system", "content": prompt},
+      # {"role": "user", "content": PROMPT_FINAL},
+      # {"role": "assistant", "content": "Entendi!"},
+      # {"role": "user", "content": "Crie um post"}
+      {"role": "user", "content": f'Assunto: {prompt}\n{PROMPT_FINAL}\nCrie um Post'}
     ]
   )
   return response

@@ -3,6 +3,8 @@ from time import sleep
 import ia
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
+from fractions import Fraction
+
 TITLEQTDE = 30
 TEXTQTDE = 32
 TEXTROW = 14
@@ -13,6 +15,15 @@ caminho_img_gerada = './post/imagens_gerada'
 caminho_img_usada = './post/imagem_usada'
 caminho_texto = './post/texto'
 caminho_pronto = './post/pronto'
+caminho_img_resize = './post/imagem_resize'
+
+tipo = {
+  "Vertical":(1080, 1350), #4:5
+  "Quadrado":(1080, 1080), #1:1
+  "Horizontal": (1080, 566), #1.91:1
+  "Stories":(1080, 1920), #9:16 
+  "IGTV":(420, 654) #1:1.55 Foto de capa
+}
 
 def gerarTexto(prompt:str="", nicho:str=""):
   while True:
@@ -42,12 +53,13 @@ def gerarTexto(prompt:str="", nicho:str=""):
   return title, content, description, hashtag
 
 def consertarPost(request:str=""):
-  text = re.sub(r'[{}]', '', request)
+  text = re.sub(r'[{}`]', '', request)
+  text = text.replace("json", " ")
   text = text.replace("\n", " ")
   return "{" + text + "}"
 
 def gerarImagem(nicho:str=""):
-  prompt = f"Projete uma imagem de fundo com elementos relacionados a {nicho}, com foco na legibilidade quando o texto branco é sobreposto. Integre fractais abstratos ao fundo para adicionar profundidade à cena. Certifique-se de que as cores utilizadas permita que o texto branco se destaque claramente do fundo. A imagem não deve conter nenhum texto."
+  prompt = f"Projete uma imagem de fundo com elementos relacionados a {nicho}, com foco na legibilidade quando com o branco a ser sobreposto. Integre fractais abstratos ao fundo para adicionar profundidade à cena. Certifique-se de que as cores utilizadas permita que a cor branca se destaque claramente do fundo. A imagem não deve conter nenhum texto ou letras."
   ia.gerarImagem(prompt, caminho_img_gerada)
 
 def gerarPrompt(nicho:str=""):
@@ -120,12 +132,41 @@ def geraImagemComTexto(img:str="", titulo:str="", conteudo:str="", hashtag:str="
   bg.close()
   print("Imagem final pronta")
 
-def main(nicho:str=""):
+def crop_resize(image, size, ratio):
+  w, h = image.size
+  if w > ratio * h:
+    x, y = (w - ratio * h) // 2,0
+  else:
+    x, y = 0, (h- w / ratio) // 2
+  image = image.crop((x, y, w - x, h - y))
+
+  if image.size > size:
+    image.thumbnail(size, Image.Resampling.LANCZOS)
+  else:
+    image = image.resize(size, Image.Resampling.LANCZOS)
+  return image
+
+def resizeImage(img_file:str="", size:any=(0,0)):
+  try:
+    image = crop_resize(Image.open(img_file), size, Fraction(*size))
+    image_name = os.path.basename(img_file)
+    image.save(f'{caminho_img_resize}/{image_name}')
+    image.close()
+    shutil.move(img_file, f'{caminho_img_usada}/{image_name}')
+    return f'{caminho_img_resize}/{image_name}'
+  except Exception as e:
+    print(e)
+    return None
+
+def main(nicho:str="", tiponicho:str=""):
   imgs = [x for x in glob.glob(rf"{caminho_img_gerada}/*.png")]
   if len(imgs) < 1:
     print("Gerando imagem")
-    gerarImagem(nicho)
+    gerarImagem(tiponicho)
     imgs = [x for x in glob.glob(rf"{caminho_img_gerada}/*.png")]
+
+  img = resizeImage(imgs[0], tipo["Vertical"])
+  if not img: return
   
   print("Gerando prompt")
   prompt = gerarPrompt(nicho)
@@ -143,7 +184,8 @@ def main(nicho:str=""):
   
   titulo = editarTexto(title, TITLEQTDE)
   conteudo = editarTexto(content, TEXTQTDE)
-  img = imgs[0]
+  
+  # img = imgs[0]
   
   nome = "Post_" + str(random.randrange(0,100000))
 
@@ -154,10 +196,10 @@ def main(nicho:str=""):
   print("Gerando imagem final")
   geraImagemComTexto(img, titulo, conteudo, hashtag, nome)
 
-  file_img = os.path.basename(img)
-  shutil.move(img, f'{caminho_img_usada}/{file_img}')
+  # file_img = os.path.basename(img)
+  # shutil.move(img, f'{caminho_img_usada}/{file_img}')
 
   print('Iniciando postagem')
   instagram.postarFoto(caminho_pronto, caminho_texto, nome)
 
-main("Aprender automação com python")
+main("Aprender automação com python", "python")
