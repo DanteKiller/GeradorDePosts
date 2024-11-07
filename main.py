@@ -18,11 +18,11 @@ caminho_pronto = './post/pronto'
 caminho_img_resize = './post/imagem_resize'
 
 tipo = {
-  "Vertical":(1080, 1350), #4:5
-  "Quadrado":(1080, 1080), #1:1
-  "Horizontal": (1080, 566), #1.91:1
-  "Stories":(1080, 1920), #9:16 
-  "IGTV":(420, 654) #1:1.55 Foto de capa
+  "Vertical":[(1080, 1350), 60.0], #4:5
+  "Quadrado":[(1080, 1080), 50.0], #1:1
+  "Horizontal": [(1080, 566), 65.0], #1.91:1
+  "Stories":[(1080, 1920), 55.0], #9:16 
+  "IGTV":[(420, 654), 20.0] #1:1.55 Foto de capa
 }
 
 def gerarTexto(prompt:str="", nicho:str=""):
@@ -107,7 +107,7 @@ def editarTexto(text:str="", tqtde:int=0) -> str:
     conteudo += temp[:-1]
   return conteudo
 
-def geraImagemComTexto(img:str="", titulo:str="", conteudo:str="", hashtag:str="", nome:str=""):
+def geraImagemComTexto(img:str="", titulo:str="", conteudo:str="", hashtag:str="", nome:str="", tipoSel:float=50.0):
   imagem = None
   draw = None
   print("Adicionando o texto na imagem")
@@ -116,16 +116,16 @@ def geraImagemComTexto(img:str="", titulo:str="", conteudo:str="", hashtag:str="
   y = bg.height//2
   imagem = Image.new('RGBA', bg.size)
   draw = ImageDraw.Draw(imagem)
-  fonte = ImageFont.truetype(caminho_font, 50.1)
-  fonte1 = ImageFont.truetype(caminho_font, 50)
+  fonte = ImageFont.truetype(caminho_font, tipoSel + 0.1)
+  fonte1 = ImageFont.truetype(caminho_font, tipoSel)
 
-  draw.multiline_text(xy=(x,y), text=titulo+"\n"+conteudo, font=fonte, fill="#1A3442", anchor="mm", align="center")
+  draw.multiline_text(xy=(x,y), text=titulo+"\n"+conteudo, font=fonte, stroke_width=2, stroke_fill="#ffff00", fill="#1A3442", anchor="mm", align="center")
 
   imagem = imagem.filter(ImageFilter.BoxBlur(7))
   bg.paste(imagem, imagem)
 
   draw = ImageDraw.Draw(bg)
-  draw.text(xy=(x,y), text=titulo+"\n"+conteudo, fill="#ffffff", font=fonte1, anchor="mm", align="center")
+  draw.text(xy=(x,y), text=titulo+"\n"+conteudo, fill="#ffffff", font=fonte1, stroke_width=2, stroke_fill="#000000", anchor="mm", align="center")
 
   print("Salvando a imagem final")
   bg.save(f'{caminho_pronto}/{nome}.png')
@@ -165,7 +165,8 @@ def main(nicho:str="", tiponicho:str=""):
     gerarImagem(tiponicho)
     imgs = [x for x in glob.glob(rf"{caminho_img_gerada}/*.png")]
 
-  img = resizeImage(imgs[0], tipo["Vertical"])
+  tipoSel = tipo["Vertical"]
+  img = resizeImage(imgs[0], tipoSel[0])
   if not img: return
   
   print("Gerando prompt")
@@ -194,7 +195,7 @@ def main(nicho:str="", tiponicho:str=""):
     f.write(title + "\n" + content + "\n" + description + "\n" + hashtag)
 
   print("Gerando imagem final")
-  geraImagemComTexto(img, titulo, conteudo, hashtag, nome)
+  geraImagemComTexto(img, titulo, conteudo, hashtag, nome, tipoSel[1])
 
   # file_img = os.path.basename(img)
   # shutil.move(img, f'{caminho_img_usada}/{file_img}')
@@ -202,4 +203,32 @@ def main(nicho:str="", tiponicho:str=""):
   print('Iniciando postagem')
   instagram.postarFoto(caminho_pronto, caminho_texto, nome)
 
-main("Aprender automação com python", "python")
+  
+def teste(tiponicho:str=""):
+  imgs = [x for x in glob.glob(rf"{caminho_img_gerada}/*.png")]
+  if len(imgs) < 1:
+    print("Gerando imagem")
+    gerarImagem(tiponicho)
+    imgs = [x for x in glob.glob(rf"{caminho_img_gerada}/*.png")]
+
+  tipoSel = tipo["Vertical"]
+  img = resizeImage(imgs[0], tipoSel[0])
+  if not img: return
+  
+  with open(f'{caminho_texto}/Post_43409.txt', "r", encoding="UTF-8") as f:
+    textos = f.readlines()
+    title = textos[0]
+    content = textos[1].replace("\n", "")
+    description = textos[2].replace("\n", "")
+    hashtag = textos[3].replace("\n", "")
+  
+  titulo = editarTexto(title, TITLEQTDE)
+  conteudo = editarTexto(content, TEXTQTDE)
+    
+  nome = "Post_" + str(random.randrange(0,100000))
+
+  print("Gerando imagem final")
+  geraImagemComTexto(img, titulo, conteudo, hashtag, nome, tipoSel[1])
+
+main("Automação de post do instagram com nosso código", "python")
+# teste("python")
