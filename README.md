@@ -14,10 +14,11 @@ https://www.bing.com/images/create
 Clonar repositório e preparar ambiente virtual
 
 No cmd digite: 
-git clone https://github.com/DanteKiller/GeradorDePosts.git
+git clone https://github.com/DanteKiller/GeradorDePosts.git .
+Obs: o "." é para clonar o repositório na raiz da pasta onde está o caminho no CMD, para uma subpasta, troque o ponto para o nome da pasta, exemplo: git clone https://github.com/DanteKiller/GeradorDePosts.git "GerarPosts"
 
 Entre na pasta com o comando:
-cd GeradorDePosts
+cd GeradorDePosts - caso tenha usado o . para clonar, ou o nome da pasta que você criou
 
 Abra o VS Code usando o comando:
 code .
