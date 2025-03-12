@@ -16,7 +16,7 @@ Clonar repositório e preparar ambiente virtual
 No cmd digite: 
 git clone https://github.com/DanteKiller/GeradorDePosts.git
 
-Entre na pasta com o comendo:
+Entre na pasta com o comando:
 cd GeradorDePosts
 
 Abra o VS Code usando o comando:
