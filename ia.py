@@ -1,4 +1,4 @@
-import random, re, requests, os
+import random, re, requests, os, config
 import g4f
 import g4f.Provider
 from g4f.cookies import set_cookies
@@ -6,7 +6,8 @@ from g4f.cookies import set_cookies
 g4f.debug.logging = True
 g4f.debug.version_check = False
 
-cookie = "ADICIONE O COOKIE DO BING AQUI"
+cookie = config.COOKIE
+
 set_cookies(".bing.com", {
   "_U": cookie
 })
@@ -96,8 +97,6 @@ O resultado deve ser em português.
 A sua resposta deve ser retornado exatamente no formato json seguindo exatamente como o modelo:
 {MODELO}
 """
-
-# Sua primeira resposta deve ser apenas que entendeu.
 
 def gerarPost(prompt:str="") -> str:
   response = g4f.ChatCompletion.create(

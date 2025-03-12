@@ -1,12 +1,12 @@
 import json, random, glob, os, unicodedata, re, shutil, instagram
 from time import sleep
-import ia
+import ia, gemini
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 from fractions import Fraction
 
 TITLEQTDE = 30
-TEXTQTDE = 32
+TEXTQTDE = 30
 TEXTROW = 14
 
 # Caminho das pastas
@@ -16,18 +16,19 @@ caminho_img_usada = './post/imagem_usada'
 caminho_texto = './post/texto'
 caminho_pronto = './post/pronto'
 caminho_img_resize = './post/imagem_resize'
+caminho_img_jpg = './post/imagem_jpg'
 
 tipo = {
   "Vertical":[(1080, 1350), 60.0], #4:5
   "Quadrado":[(1080, 1080), 50.0], #1:1
   "Horizontal": [(1080, 566), 65.0], #1.91:1
-  "Stories":[(1080, 1920), 55.0], #9:16 
+  "Stories":[(1080, 1920), 60.0], #9:16 
   "IGTV":[(420, 654), 20.0] #1:1.55 Foto de capa
 }
 
 def gerarTexto(prompt:str="", nicho:str=""):
   while True:
-    request = ia.gerarPost(prompt)
+    request = gemini.gerarPost(prompt) #NOVO
     try:
       _request = consertarPost(request)
       result = json.loads(_request)
@@ -52,10 +53,45 @@ def gerarTexto(prompt:str="", nicho:str=""):
     hashtags = f"#{nicho.lower()}"
   return title, content, description, hashtag
 
+#NOVO
+def gerarCarrocel(prompt:str="", nicho:str=""):
+  while True:
+    request = gemini.gerarConteudo(nicho, prompt)
+    try:
+      _request = consertarPost(request)
+      result = json.loads(_request)
+      break
+    except Exception as e:
+      print("Erro: " + e.msg)
+      sleep(5)
+    
+  keysresp = [r for r in result.keys()]
+  title = result[keysresp[0]]
+  ttc = title[-1:]
+  if ttc != "." and ttc != "!" and ttc != "?" and ttc != ":" and ttc != ";":
+    title += "."
+  apresentation = result[keysresp[1]]
+  content = []
+  conteudo = result[keysresp[2]][0]
+  keys = [r for r in conteudo.keys()]
+  for k in keys:
+    content.append(f"{str(k)}\n{conteudo[str(k)]}")
+  try:
+    hashtags = result[keysresp[3]].lower()
+    hashtag = unicodedata.normalize("NFD", hashtags)
+    hashtag = hashtag.encode("ascii", "ignore")
+    hashtag = hashtag.decode("utf-8")
+  except:
+    hashtags = f"#{nicho.lower()}"
+  return title, apresentation, content, hashtag
+
+#NOVO
 def consertarPost(request:str=""):
   text = re.sub(r'[{}`]', '', request)
   text = text.replace("json", " ")
   text = text.replace("\n", " ")
+  text = text.replace("[", "[{") #NOVO
+  text = text.replace("]", "}]") #NOVO
   return "{" + text + "}"
 
 def gerarImagem(nicho:str=""):
@@ -64,7 +100,8 @@ def gerarImagem(nicho:str=""):
 
 def gerarPrompt(nicho:str=""):
   while True:
-    request = ia.criarPrompt(nicho)
+    request = gemini.gerarPrompt(nicho) #NOVO
+    # request = ia.criarPrompt(nicho)
     try:
       _request = consertarPost(request)
       result = json.loads(_request)
@@ -107,7 +144,7 @@ def editarTexto(text:str="", tqtde:int=0) -> str:
     conteudo += temp[:-1]
   return conteudo
 
-def geraImagemComTexto(img:str="", titulo:str="", conteudo:str="", hashtag:str="", nome:str="", tipoSel:float=50.0):
+def geraImagemComTexto(img:str="", titulo:str="", conteudo:str="", nome:str="", tipoSel:float=50.0):
   imagem = None
   draw = None
   print("Adicionando o texto na imagem")
@@ -131,6 +168,36 @@ def geraImagemComTexto(img:str="", titulo:str="", conteudo:str="", hashtag:str="
   bg.save(f'{caminho_pronto}/{nome}.png')
   bg.close()
   print("Imagem final pronta")
+
+#NOVO
+def geraImagemComTextoCarrocel(img:str="", conteudo:list=[], nome:str="", tipoSel:float=50.0):
+  imgs = []
+  print("Gerando imagem com texto do carrocel")
+  bg = Image.open(img).convert('RGB')
+  x = bg.width//2
+  y = bg.height//2
+  fonte = ImageFont.truetype(caminho_font, tipoSel + 0.1)
+  fonte1 = ImageFont.truetype(caminho_font, tipoSel)
+
+  for i, cf in enumerate(conteudo):
+    bg_copy = bg.copy()
+    imagem = Image.new('RGBA', bg_copy.size)
+    draw = ImageDraw.Draw(imagem)
+    draw.multiline_text(xy=(x,y), text=cf, font=fonte, stroke_width=2, stroke_fill="#ffff00", fill="#1A3442", anchor="mm", align="center")
+
+    imagem = imagem.filter(ImageFilter.BoxBlur(7))
+    bg_copy.paste(imagem, imagem)
+
+    draw = ImageDraw.Draw(bg_copy)
+    draw.text(xy=(x,y), text=cf, fill="#ffffff", font=fonte1, stroke_width=2, stroke_fill="#000000", anchor="mm", align="center")
+
+    print("Salvando a imagem final")
+    bg_copy.save(f'{caminho_pronto}/{nome}_{i}.png')
+    imgs.append(f'{caminho_pronto}/{nome}_{i}.png')
+
+  bg.close()
+  print("Imagem final pronta")
+  return imgs
 
 def crop_resize(image, size, ratio):
   w, h = image.size
@@ -158,13 +225,59 @@ def resizeImage(img_file:str="", size:any=(0,0)):
     print(e)
     return None
 
-def main(nicho:str="", tiponicho:str=""):
+#NOVO
+def gerarNovasImagens(tiponicho:str=""):
   imgs = [x for x in glob.glob(rf"{caminho_img_gerada}/*.png")]
   if len(imgs) < 1:
     print("Gerando imagem")
     gerarImagem(tiponicho)
     imgs = [x for x in glob.glob(rf"{caminho_img_gerada}/*.png")]
+  return imgs
 
+#NOVO
+def salvarTextos(caminho:str="", texto:str=""):
+  with open(caminho, "a", encoding="UTF-8") as f:
+    f.write(texto + "\n")
+
+#NOVO
+def main_Post(nicho:str="", tiponicho:str=""):
+  imgs = gerarNovasImagens(tiponicho)
+  tipoSel = tipo["Vertical"]
+  img = resizeImage(imgs[0], tipoSel[0])
+  if not img: return
+  
+  print("Gerando prompt")
+  prompt = gerarPrompt(nicho)
+
+  print("Salvando prompt")
+  salvarTextos('./conteudo.txt', prompt)
+
+  sucesso = True
+  while True:
+    print("Gerando o conteúdo")
+    title, content, description, hashtag = gerarTexto(prompt, nicho)
+    if not sucesso or len(title) == 0 or len(title) >= 60 or len(content) == 0 or len(content) > 500:
+      sleep(3)
+      continue
+    break
+  
+  titulo = editarTexto(title, TITLEQTDE)
+  conteudo = editarTexto(content, TEXTQTDE)
+    
+  nome = "Post_" + str(random.randrange(0,100000))
+
+  print("Salvando texto")
+  salvarTextos(f'{caminho_texto}/{nome}.txt', f"{title}\n{content}\n{description}\n{hashtag}")
+
+  print("Gerando imagem final")
+  geraImagemComTexto(img, titulo, conteudo, nome, tipoSel[1])
+
+  print('Iniciando postagem')
+  instagram.postarFoto(caminho_pronto, caminho_texto, caminho_img_jpg, nome)
+
+#NOVO
+def main_carrocel(nicho:str="", tiponicho:str=""):
+  imgs = gerarNovasImagens(tiponicho)
   tipoSel = tipo["Vertical"]
   img = resizeImage(imgs[0], tipoSel[0])
   if not img: return
@@ -172,39 +285,42 @@ def main(nicho:str="", tiponicho:str=""):
   print("Gerando prompt")
   prompt = gerarPrompt(nicho)
   print("Salvando prompt")
-  with open(f'./conteudo.txt', "a", encoding="UTF-8") as f:
-    f.write(prompt + "\n")
+  salvarTextos('./conteudo.txt' ,prompt)
 
+  sucesso = True
   while True:
     print("Gerando o conteúdo")
-    title, content, description, hashtag = gerarTexto(prompt, nicho)
-    if len(title) == 0 or len(title) >= 60 or len(content) == 0 or len(content) > 500:
+    title, apresentation, content, hashtag = gerarCarrocel(prompt, nicho)
+    for ct in content:
+      if len(ct) == 0 or len(ct) > 500:
+        sucesso = False
+    if not sucesso or len(title) == 0 or len(title) >= 60 or len(apresentation) == 0 or len(apresentation) > 400:
       sleep(3)
       continue
     break
   
   titulo = editarTexto(title, TITLEQTDE)
-  conteudo = editarTexto(content, TEXTQTDE)
-  
-  # img = imgs[0]
-  
+  apresentação = editarTexto(apresentation, TEXTQTDE)
+  conteudo = [f"{titulo}\n{apresentação}"]
+  for i, ct in enumerate(content):
+    ct = ct.replace(f"{i+1}.", "")
+    conteudo.append(editarTexto(ct, TEXTQTDE))
+
   nome = "Post_" + str(random.randrange(0,100000))
 
   print("Salvando texto")
-  with open(f'{caminho_texto}/{nome}.txt', "w", encoding="UTF-8") as f:
-    f.write(title + "\n" + content + "\n" + description + "\n" + hashtag)
+  texto = f"{title}\n{apresentation}\n"
+  texto += ''.join(f"{c}\n" for c in content)
+  texto += hashtag
+  salvarTextos(f'{caminho_texto}/{nome}.txt', texto)
 
   print("Gerando imagem final")
-  geraImagemComTexto(img, titulo, conteudo, hashtag, nome, tipoSel[1])
-
-  # file_img = os.path.basename(img)
-  # shutil.move(img, f'{caminho_img_usada}/{file_img}')
+  caminho_imgs = geraImagemComTextoCarrocel(img, conteudo, nome, tipoSel[1])
 
   print('Iniciando postagem')
-  instagram.postarFoto(caminho_pronto, caminho_texto, nome)
+  instagram.postarCarrocel(caminho_imgs, caminho_texto, caminho_img_jpg, nome)
 
-  
-def teste(tiponicho:str=""):
+def teste(tiponicho:str="", nomepost:str=""):
   imgs = [x for x in glob.glob(rf"{caminho_img_gerada}/*.png")]
   if len(imgs) < 1:
     print("Gerando imagem")
@@ -215,11 +331,10 @@ def teste(tiponicho:str=""):
   img = resizeImage(imgs[0], tipoSel[0])
   if not img: return
   
-  with open(f'{caminho_texto}/Post_43409.txt', "r", encoding="UTF-8") as f:
+  with open(f'{caminho_texto}/{nomepost}.txt', "r", encoding="UTF-8") as f:
     textos = f.readlines()
     title = textos[0]
     content = textos[1].replace("\n", "")
-    description = textos[2].replace("\n", "")
     hashtag = textos[3].replace("\n", "")
   
   titulo = editarTexto(title, TITLEQTDE)
@@ -230,5 +345,22 @@ def teste(tiponicho:str=""):
   print("Gerando imagem final")
   geraImagemComTexto(img, titulo, conteudo, hashtag, nome, tipoSel[1])
 
-main("Automação de post do instagram com nosso código", "python")
-# teste("python")
+nicho = "Automação de post do instagram com nosso código"
+tiponicho = "python"
+valor = input("Digite o numero correspondente para gerar:\n1 - Post\n2 - Carrocel\n0 - Teste\n::")
+
+match int(valor):
+  case 1:
+    main_Post(nicho, tiponicho)
+  case 2:
+    main_carrocel(nicho, tiponicho)
+  case 0:
+    while True:
+      nomepost = input("Qual o nome do post?\n::") #Nome do arquivo txt na pasta post/texto
+      #verifica se o arquivo txt existe
+      if os.path.isfile(f'{caminho_texto}/{nomepost}.txt'):
+        break
+      else:
+        print("Arquivo não existe")
+        continue
+    teste(tiponicho, nomepost)
