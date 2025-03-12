@@ -32,3 +32,5 @@ venv\Scripts\Activate
 
 Instalar requirements: 
 pip install -r requirements.txt
+
+PS: Alterar os dados no arquivo config.py
